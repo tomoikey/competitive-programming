@@ -121,6 +121,10 @@ private object Reader {
     (matched, if (remains.nonEmpty) remains.tail else Nil)
   }
 
+  def readMultipleLine(n: Int): Reader[List[String]] = sequence(
+    (for (_ <- 0 until n) yield readOneLine).toList
+  )
+
   def listOfN[A: Parser: Monoid](n: Int): Reader[List[A]] =
     sequence((for (_ <- 0 until n) yield one[A]).toList)
 
