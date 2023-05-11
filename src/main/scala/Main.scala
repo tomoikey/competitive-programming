@@ -66,7 +66,7 @@ object Main {
          |c
          |d
          |hoge fuga piyo
-         |I'm a champiyoyoyyyon""".stripMargin
+         |Hello world""".stripMargin
 
     (for {
       num1 <- Reader.one[Int]
@@ -78,6 +78,7 @@ object Main {
       .run(sampleInput.toList)
       ._1
       .tap(println)
+    // Outpot -> (1,3,List(a, b, c, d),hoge fuga piyo,Hello world)
   }
 }
 
