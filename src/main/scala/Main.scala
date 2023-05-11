@@ -38,6 +38,13 @@ object Main {
       )
       (matched, if (remains.nonEmpty) remains.tail else Nil)
     }
+
+    def readOneLine: Reader[String] = Reader { s =>
+      val (matched, remains) = s.foldLeftWhile(("", s))((b, a) =>
+        Option.when(a != '\n')((b._1 + a, b._2.tail))
+      )
+      (matched, if (remains.nonEmpty) remains.tail else Nil)
+    }
     def listOfN(n: Int): Reader[List[String]] =
       sequence((for (_ <- 0 until n) yield one).toList)
 
@@ -51,13 +58,17 @@ object Main {
          |a
          |b
          |c
-         |d""".stripMargin
+         |d
+         |hoge fuga piyo
+         |I'm a champiyoyoyyyon""".stripMargin
 
     val aaa = (for {
       num1 <- Reader.one
       num2 <- Reader.one
       array <- Reader.listOfN(num1.toInt + num2.toInt)
-    } yield (num1, num2, array)).run(rawString.toList)._1
+      line <- Reader.readOneLine
+      line2 <- Reader.readOneLine
+    } yield (num1, num2, array, line, line2)).run(rawString.toList)._1
 
     println(aaa)
   }
