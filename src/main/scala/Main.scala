@@ -1,6 +1,7 @@
 import Main.{FoldLeftWhile, ParserString, stringMonoid}
 
 import scala.language.implicitConversions
+import scala.util.chaining.scalaUtilChainingOps
 
 object Main {
   implicit class FoldLeftWhile[A](itOnce: IterableOnce[A]) {
@@ -56,8 +57,9 @@ object Main {
       override def zero: Option[A] = None
     }
 
+  // 競プロのコードはここのmain関数に書いて下さい
   def main(args: Array[String]): Unit = {
-    val rawString =
+    val sampleInput =
       """|1 3
          |a
          |b
@@ -66,15 +68,16 @@ object Main {
          |hoge fuga piyo
          |I'm a champiyoyoyyyon""".stripMargin
 
-    val aaa = (for {
+    (for {
       num1 <- Reader.one[Int]
       num2 <- Reader.one[Int]
       array <- Reader.listOfN[String](num1 + num2)
       line <- Reader.readOneLine
       line2 <- Reader.readOneLine
-    } yield (num1, num2, array, line, line2)).run(rawString.toList)._1
-
-    println(aaa)
+    } yield (num1, num2, array, line, line2))
+      .run(sampleInput.toList)
+      ._1
+      .tap(println)
   }
 }
 
