@@ -1,4 +1,4 @@
-import Main.FoldLeftWhile
+import Main.{FoldLeftWhile, ParserString, stringMonoid}
 
 import scala.language.implicitConversions
 
@@ -104,22 +104,20 @@ final case class Reader[+A](run: List[Char] => (A, List[Char])) {
 private object Reader {
   def unit[A](a: => A): Reader[A] = Reader((a, _))
 
-  def one[A](implicit monoid: Monoid[A], parser: Parser[A]): Reader[A] =
-    Reader { s =>
-      val (matched, remains) = s.foldLeftWhile((monoid.zero, s))((b, a) =>
-        Option.when(!a.isWhitespace && a != '\n')(
-          (monoid.op(b._1, parser.to(a)), b._2.tail)
-        )
-      )
-      (matched, if (remains.nonEmpty) remains.tail else Nil)
-    }
-
-  def readOneLine: Reader[String] = Reader { s =>
-    val (matched, remains) = s.foldLeftWhile(("", s))((b, a) =>
-      Option.when(a != '\n')((b._1 + a, b._2.tail))
+  def extractor[A](
+      cond: Char => Boolean
+  )(implicit monoid: Monoid[A], parser: Parser[A]): Reader[A] = Reader { s =>
+    val (matched, remains) = s.foldLeftWhile((monoid.zero, s))((b, a) =>
+      Option.when(cond(a))((monoid.op(b._1, parser.to(a)), b._2.tail))
     )
     (matched, if (remains.nonEmpty) remains.tail else Nil)
   }
+
+  def one[A](implicit monoid: Monoid[A], parser: Parser[A]): Reader[A] =
+    extractor[A](a => !a.isWhitespace && a != '\n')
+
+  def readOneLine: Reader[String] =
+    extractor(_ != '\n')(stringMonoid, ParserString)
 
   def readMultipleLine(n: Int): Reader[List[String]] = sequence(
     (for (_ <- 0 until n) yield readOneLine).toList
