@@ -1,4 +1,4 @@
-import Main.{FoldLeftWhile, ParserString, stringMonoid}
+import Main.{FoldLeftWhile, ParserString}
 
 import scala.language.implicitConversions
 import scala.util.chaining.scalaUtilChainingOps
@@ -22,73 +22,67 @@ object Main {
   }
 
   implicit object ParserInt extends Parser[Int] {
-    override def to[B](from: B): Int = from.toString.toInt
+    override def to(from: String): Int = from.toInt
   }
 
   implicit object ParserString extends Parser[String] {
-    override def to[B](from: B): String = from.toString
+    override def to(from: String): String = from
   }
 
-  implicit val stringMonoid: Monoid[String] = new Monoid[String] {
-    override def op(a1: String, a2: String): String = a1 + a2
+  implicit def ParserTuple2[A, B, PA <: Parser[A], PB <: Parser[B]](implicit
+      a: PA,
+      b: PB
+  ): Parser[(A, B)] =
+    (from: String) =>
+      Reader.one[A](a).product(Reader.one[B](b)).run(from.toList)._1
 
-    override def zero: String = ""
-  }
-
-  implicit def listMonoid[A]: Monoid[List[A]] = new Monoid[List[A]] {
-    override def op(a1: List[A], a2: List[A]): List[A] = a1 ++ a2
-
-    override def zero: List[A] = Nil
-  }
-
-  implicit val intAddition: Monoid[Int] = new Monoid[Int] {
-    override def op(a1: Int, a2: Int): Int = a1 + a2
-
-    override def zero: Int = 0
-  }
-
-  implicit def optionMonoid[A](monoid: Monoid[A]): Monoid[Option[A]] =
-    new Monoid[Option[A]] {
-      override def op(a1: Option[A], a2: Option[A]): Option[A] = for {
-        aa1 <- a1
-        aa2 <- a2
-      } yield monoid.op(aa1, aa2)
-
-      override def zero: Option[A] = None
-    }
+  implicit def ParserTuple3[
+      A,
+      B,
+      C,
+      PA <: Parser[A],
+      PB <: Parser[B],
+      PC <: Parser[C]
+  ](implicit
+      a: PA,
+      b: PB,
+      c: PC
+  ): Parser[(A, B, C)] =
+    (from: String) =>
+      Reader
+        .one[A](a)
+        .product(Reader.one[B](b))
+        .product(Reader.one[C](c))
+        .map(n => (n._1._1, n._1._2, n._2))
+        .run(from.toList)
+        ._1
 
   // 競プロのコードはここのmain関数に書いて下さい
   def main(args: Array[String]): Unit = {
     val sampleInput =
-      """|1 3
+      """|2 hello 3
          |a
          |b
          |c
          |d
-         |hoge fuga piyo
-         |Hello world""".stripMargin
+         |hoge1 fuga1
+         |hoge2 fuga2""".stripMargin
 
     (for {
-      num1 <- Reader.one[Int]
-      num2 <- Reader.one[Int]
-      array <- Reader.listOfN[String](num1 + num2)
-      line <- Reader.readOneLine
-      line2 <- Reader.readOneLine
-    } yield (num1, num2, array, line, line2))
+      (num1, str1, num2) <- Reader.readOneLine[(Int, String, Int)]
+      str2 <- Reader.one[String]
+      strArray <- Reader.listOfN[String](num2)
+      strTupleArray <- Reader.readMultipleLine[(String, String)](num1)
+    } yield (num1, str1, num2, str2, strArray, strTupleArray))
       .run(sampleInput.toList)
       ._1
       .tap(println)
-    // Outpot -> (1,3,List(a, b, c, d),hoge fuga piyo,Hello world)
+    // Output -> (2,hello,3,a,List(b, c, d),List((hoge1,fuga1), (hoge2,fuga2)))
   }
 }
 
-trait Monoid[A] {
-  def op(a1: A, a2: A): A
-  def zero: A
-}
-
 trait Parser[A] {
-  def to[B](from: B): A
+  def to(from: String): A
 }
 
 final case class Reader[+A](run: List[Char] => (A, List[Char])) {
@@ -103,6 +97,10 @@ final case class Reader[+A](run: List[Char] => (A, List[Char])) {
     val (a, ss) = run(s)
     f(a).run(ss)
   }
+
+  def withFilter[B](f: A => Boolean): Reader[A] = this
+
+  def product[B](that: Reader[B]): Reader[(A, B)] = map2(that)((_, _))
 }
 
 private object Reader {
@@ -110,24 +108,25 @@ private object Reader {
 
   def extractor[A](
       cond: Char => Boolean
-  )(implicit monoid: Monoid[A], parser: Parser[A]): Reader[A] = Reader { s =>
-    val (matched, remains) = s.foldLeftWhile((monoid.zero, s))((b, a) =>
-      Option.when(cond(a))((monoid.op(b._1, parser.to(a)), b._2.tail))
+  )(implicit parser: Parser[A]): Reader[A] = Reader { s =>
+    val (matched, remains) = s.foldLeftWhile(("", s))((b, a) =>
+      Option.when(cond(a))((b._1 + a, b._2.tail))
     )
-    (matched, if (remains.nonEmpty) remains.tail else Nil)
+    (parser.to(matched), if (remains.nonEmpty) remains.tail else Nil)
   }
 
-  def one[A](implicit monoid: Monoid[A], parser: Parser[A]): Reader[A] =
+  def one[A](implicit parser: Parser[A]): Reader[A] =
     extractor[A](a => !a.isWhitespace && a != '\n')
 
-  def readOneLine: Reader[String] =
-    extractor(_ != '\n')(stringMonoid, ParserString)
+  def readOneLine[A](implicit parser: Parser[A]): Reader[A] =
+    extractor[A](_ != '\n')
 
-  def readMultipleLine(n: Int): Reader[List[String]] = sequence(
-    (for (_ <- 0 until n) yield readOneLine).toList
-  )
+  def readMultipleLine[A](n: Int)(implicit parser: Parser[A]): Reader[List[A]] =
+    sequence(
+      (for (_ <- 0 until n) yield readOneLine[A]).toList
+    )
 
-  def listOfN[A: Parser: Monoid](n: Int): Reader[List[A]] =
+  def listOfN[A: Parser](n: Int): Reader[List[A]] =
     sequence((for (_ <- 0 until n) yield one[A]).toList)
 
   def sequence[A](list: List[Reader[A]]): Reader[List[A]] =
