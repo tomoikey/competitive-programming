@@ -1,4 +1,26 @@
 # Competitive Programming Standard Input with Scala
+# 例
+```scala
+    val sampleInput =
+      """|2 hello 3
+         |a
+         |b
+         |c
+         |d
+         |hoge1 fuga1
+         |hoge2 fuga2""".stripMargin
+
+    (for {
+      (num1, str1, num2) <- Reader.readOneLine[(Int, String, Int)]
+      str2 <- Reader.one[String]
+      strArray <- Reader.listOfN[String](num2)
+      strTupleArray <- Reader.readMultipleLine[(String, String)](num1)
+    } yield (num1, str1, num2, str2, strArray, strTupleArray))
+      .run(sampleInput.toList)
+      ._1
+      .tap(println)
+    // Output -> (2,hello,3,a,List(b, c, d),List((hoge1,fuga1), (hoge2,fuga2)))
+```
 # 使い方
 1mmも外部ライブラリに依存してないので`Main.scala`をコピペすればどこでも動くはずです
 ```scala
