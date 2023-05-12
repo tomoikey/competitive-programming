@@ -31,7 +31,10 @@ val sampleInput =
   .run(sampleInput.toList)
   ._1
   .tap(println)
-// Output -> (2,hello,3,a,List(b, c, d),List((hoge1,fuga1), (hoge2,fuga2)))
+```
+```shell
+$ sbt run
+(2,hello,3,a,List(b, c, d),List((hoge1,fuga1), (hoge2,fuga2)))
 ```
 # 使い方
 1mmも外部ライブラリに依存してないので`Main.scala`をコピペすればどこでも動くはずです
