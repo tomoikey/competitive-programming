@@ -1,5 +1,17 @@
 # Competitive Programming Standard Input with Scala
 # 例
+```
+2 hello 3
+a
+b
+c
+d
+hoge1 fuga1
+hoge2 fuga2
+```
+という入力を想定する。  
+以下の`val sampleInput`が同等の価値を生む。  
+(`|`は`stripMargin`が行頭を判断するためものなので気にしないで大丈夫です)
 ```scala
 val sampleInput =
   """|2 hello 3
